@@ -11,7 +11,8 @@ SolarSystem::SolarSystem() :
     m_potentialEnergy(0),
     m_maxDistance(0.0),
     m_minDistance(1e+25),
-    m_generalRelativity(false)
+    m_generalRelativity(false),
+    m_timesteps(0)
 {
 }
 
@@ -20,8 +21,11 @@ CelestialBody& SolarSystem::createCelestialBody(vec3 position, vec3 velocity, do
     return m_bodies.back(); // Return reference to the newest added celstial body
 }
 
-void SolarSystem::calculateForcesAndEnergy()
-{
+void SolarSystem::calculateForcesAndEnergy() {
+    /*This function calucaltes the forces and energy between every pair of celestial bodies
+     *and updates the forces and that are acting up each celestial body.
+    */
+    m_timesteps++;
     m_kineticEnergy = 0;
     m_potentialEnergy = 0;
     m_angularMomentum.zeros();
@@ -50,13 +54,15 @@ void SolarSystem::calculateForcesAndEnergy()
             } else {
                 gR = 0;
             }
-            double l = (deltaRVector.cross(body1.velocity)).length();
+            double l = (deltaRVector.cross(body2.velocity)).length();
             vec3 F_1 = ((G*body1.mass*body2.mass/(dr*dr*dr))*(1.0+gR*((3.0*l*l)/(dr*dr*c*c))))*deltaRVector;
             body1.force -= F_1;
             body2.force += F_1;
 
-            m_kineticEnergy += 0.5*body1.mass*body1.velocity.lengthSquared();
+            m_potentialEnergy += -G*body1.mass*body2.mass/dr;
         }
+
+        m_kineticEnergy += 0.5*body1.mass*body1.velocity.lengthSquared();
     }
 }
 
@@ -77,6 +83,8 @@ double SolarSystem::kineticEnergy() const {
 }
 
 bool SolarSystem::collisionDetection(CelestialBody body1, CelestialBody body2) const {
+    /*This function detects if two celestial bodies have crashed into eachother.
+    */
     bool collision = false;
     vec3 deltaRVector = body1.position - body2.position;
     double dr = deltaRVector.length();
@@ -107,6 +115,7 @@ void SolarSystem::writeToFileLogarithm(string filename){
     //In this function we are going to scale the output back from AU to km.
     //And after that we are going to find the polar coordinates and find the logarithm of the radius
     //such that the distances between the celestial bodies are logarithmic.
+    //Unfortunatly the result is bizarre.
     if(!m_ofile.good()) {
         m_ofile.open(filename.c_str(), ofstream::out);
         if(!m_ofile.good()) {
@@ -143,6 +152,12 @@ void SolarSystem::writeToFileLogarithm(string filename){
 }
 
 void SolarSystem::findMaxMinDistance(string body1Name, string body2Name) {
+    /*This function finds the maximum and minimum distance between two given celestialBodies.
+     *It will then update m_maxDistance and m_minDistance so that at the end of the run
+     *only the minimum and maximum values will be stored.
+    */
+
+
     for(int i=0; i<numberOfBodies(); i++) {
         CelestialBody &body1 = m_bodies[i];
         for(int j=i+1; j<numberOfBodies(); j++) {
@@ -177,27 +192,32 @@ double SolarSystem::minDistance() {
     return m_minDistance;
 }
 
-void SolarSystem::findCoordinates(string body1Name, string body2Name, double minDist) {
-    double tolerance = 1e-3;
-    vec3 coordinates;
-    for(int i=0; i<numberOfBodies(); i++) {
-        CelestialBody &body1 = m_bodies[i];
-        for(int j=i+1; j<numberOfBodies(); j++) {
-            CelestialBody &body2 = m_bodies[j];
-            vec3 deltaRVector = body1.position - body2.position;
-            if(body1.name.compare(body1Name) == 0 && body2.name.compare(body2Name) == 0) {
-                if(abs(deltaRVector.length() - minDist) <= tolerance) {
-                    coordinates = body1.position;
-                    setPerihelionCoordinates(coordinates);
-                }
-            } else if (body1.name.compare(body2Name) == 0 && body2.name.compare(body1Name) == 0) {
-                if(abs(deltaRVector.length() - minDist) <= tolerance) {
-                    coordinates = body1.position;
-                    setPerihelionCoordinates(coordinates);
-                }
-            }
+void SolarSystem::findCoordinates(CelestialBody body1, CelestialBody body2, double minDist) {
+    /*This function attempts to find coordinates of the further away object that is 'minDist' away,
+     * and set the m_perihelionCoordinates to the coordinates found here.
+     * If Body1 is at (0,0,0) and Body2 is at (1,0,0) and minDist is 1. Then this program set
+     *m_periihelionCoordinates to (1,0,0).
+    */
+
+    double tolerance = 1e-7;
+    vec3 deltaRVector = body1.position - body2.position;
+    if(abs(deltaRVector.length() - minDist) <= tolerance) {
+        if(body1.position.length() < body2.position.length()) {
+            setPerihelionCoordinates(body2.position);
+            setTheta((atan2(m_perihelionCoordinates.y(),m_perihelionCoordinates.y())+M_PI)*180/M_PI);
+        } else {
+            setPerihelionCoordinates(body1.position);
+            setTheta((atan2(m_perihelionCoordinates.y(),m_perihelionCoordinates.y())+M_PI)*180/M_PI);
         }
     }
+}
+
+void SolarSystem::setTheta(double theta) {
+     m_theta.push_back(theta);
+}
+
+vector<double> SolarSystem::getTheta() const{
+    return m_theta;
 }
 
 void SolarSystem::setPerihelionCoordinates(vec3 perihelionCoordinates) {
@@ -207,67 +227,36 @@ void SolarSystem::setPerihelionCoordinates(vec3 perihelionCoordinates) {
 vec3 SolarSystem::getPerihelionCoordinates() const{
     return m_perihelionCoordinates;
 }
-
-
+/*
+void SolarSystem::findPerihelion(string body1Name, string body2Name) const{
+    for(int i=0; i<numberOfBodies(); i++) {
+        CelestialBody &body1 = m_bodies[i];
+        for(int j=i+1; j<numberOfBodies(); j++) {
+            CelestialBody &body2 = m_bodies[j];
+            if(body1.name.compare(body1Name) == 0 && body2.name.compare(body2Name) == 0) {
+                if(m_timesteps == 0) {
+                    m_prevPrevCoord = body2.position;
+                }
+                if(m_timesteps == 1) {
+                    m_prevCoord = body2.position;
+                }
+                if(m_timesteps > 1) {
+                    m_currentCoord = body2.position;
+                    if(m_prevPrevCoord.length() > m_prevCoord.length() && m_currentCoord.length() > m_prevCoord) {
+                        m_periCoord.push_back(m_prevCoord);
+                    }
+                    m_prevPrevCoord = m_prevCoord;
+                    m_prevCoord = m_currentCoord;
+                }
+            }
+        }
+    }
+}
+*/
 void SolarSystem::setGeneralRelativity() {
     m_generalRelativity = true;
 }
 
-/*
-IGNORE THIS FUNCTION
-vec3 SolarSystem::findGreatestDistance(string body1Name, string body2Name, string filename) {
-    int body1ID; int body2ID;
-    for(int i = 0; i< numberOfBodies(); i++) {
-        CelestialBody &body = m_bodies[i];
-
-        if(body.name.compare(body1Name) == 0) {
-            body1ID = body.ID;
-        }
-        if(body.name.compare(body2Name) == 0) {
-            body2ID = body.ID;
-        }
-    }
-    bool skip = true;
-    int counter = 0;
-    int numOfB = 0;
-    string line;
-      m_ifile.open(filename);
-      if (m_ifile.is_open()){
-        while( getline (m_ifile,line) ) {
-            if(counter == 2) {
-                skip = false;
-            }
-            counter++;
-            if(numOfB == numberOfBodies()) {
-                counter = 0;
-                skip = true;
-            }
-            numOfB++;
-            if(skip) { //Skipping the line with the number of Celestial bodies and the string line
-                numOfB = 0;
-            } else {
-                string buf; // Have a buffer string
-                stringstream ss(line); // Insert the string into a stream
-
-                vector<string> tokens; // Create vector to hold our words
-
-                while(ss >> buf){
-                    tokens.push_back(buf);
-                }
-                if(body1ID == tokens[0]) {
-                    double x = stod(tokens[2]);
-                    double y = stod(tokens[3]); //Unfinished
-                    double z = stod(tokens[4]);
-                }
-
-            }
-        }
-        m_ifile.close();
-      } else {
-          cout << "Unable to open file";
-      }
-}
-*/
 vec3 SolarSystem::angularMomentum() const {
     return m_angularMomentum;
 }
@@ -278,10 +267,12 @@ void SolarSystem::setCenterOfMass() {
         CelestialBody &body = m_bodies[i];
         body.position -= m_centerOfMass;
     }
-
 }
 
 void SolarSystem::findCenterOfMass() {
+    /*This function attempts to find the center of mass of the solarsystem
+     * and set m_centerOfMass to this value.
+    */
     m_centerOfMass.zeros();
     double sumOfMass = 0;
     for(int i=0; i<numberOfBodies(); i++) {
@@ -297,6 +288,9 @@ vec3 SolarSystem::getCenterOfMass() const{
 }
 
 void SolarSystem::setMomentum() {
+    /*This function attempts to set the velocity of the first celestialBody (Usually the sun)
+     *so that the mass momentum is conserved and the center of mass does not wobble.
+    */
     m_momentum.zeros();
     for(int i=1; i<numberOfBodies(); i++) {
         CelestialBody &body = m_bodies[i];
@@ -312,4 +306,9 @@ vec3 SolarSystem::getMomentum() const{
 
 std::vector<CelestialBody> &SolarSystem::bodies() {
     return m_bodies;
+}
+
+ofstream &SolarSystem::file()
+{
+    return m_ofile;
 }

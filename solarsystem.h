@@ -33,14 +33,17 @@ public:
     vec3 getMomentum() const;
     void setPerihelionCoordinates(vec3 perihelionCoordinates);
     vec3 getPerihelionCoordinates() const;
-    void findCoordinates(string body1Name, string body2Name, double minDistance);
+    void findCoordinates(CelestialBody body1Name, CelestialBody body2Name, double minDistance);
+    void setTheta(double theta);
+    vector<double> getTheta() const;
+    void findPerihelion(string body1Name, string body2Name) const;
     std::vector<CelestialBody> &bodies();
+    ofstream &file();
 
 private:
     std::vector<CelestialBody> m_bodies; //All the planets, astroids etc.
     vec3 m_angularMomentum; //The solarsystems angular momentum
     std::ofstream m_ofile; //m_ stands for member, member variable, a member of the class. It is just a convention.
-    std::ifstream m_ifile;
     vec3 m_centerOfMass;
     vec3 m_momentum;
     vec3 m_perihelionCoordinates;
@@ -49,6 +52,12 @@ private:
     bool m_generalRelativity;
     double m_kineticEnergy;
     double m_potentialEnergy;
+    vector<double> m_theta;
+    vec3 m_prevPrevCoord;
+    vec3 m_prevCoord;
+    vec3 m_currentCoord;
+    int m_timesteps;
+    vector<vec3> m_periCoord;
 };
 
 #endif // SOLARSYSTEM_H

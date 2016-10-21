@@ -4,70 +4,156 @@
 #include "euler.h"
 #include "verlet.h"
 #include <string>
+#include <vector>
 
 using namespace std;
 
 SolarSystem *solarSystem;
 
+void runVerlet(int T=10,double dt = 0.001,string filename = "", string body1="", string body2="") {
+    long numTimesteps = T/dt;
+    Verlet integrator(dt);
+    for(int timestep=0; timestep<numTimesteps; timestep++) {
+        integrator.integrateOneStep(*solarSystem);
+
+        if(body1.compare("") !=0 && body2.compare("") != 0) {
+            solarSystem->findMaxMinDistance(body1, body2);
+        }
+
+        if(filename.compare("") != 0) {
+           solarSystem->writeToFile(filename);
+        }
+    }
+
+    int years = T;
+
+    cout << "The solar system is simulating "<< years << " years with " << solarSystem->bodies().size() << " objects." << endl;
+}
+
+/*
+void runEuler(int T=10,double dt = 0.0001,string filename = "") {
+    int numTimesteps = T*2*M_PI/dt;
+    Euler integrator(dt);
+    for(int timestep=0; timestep<numTimesteps; timestep++) {
+        integrator.integrateOneStep(*solarSystem);
+
+        if(filename.compare("") != 0) {
+            solarSystem->writeToFile(filename);
+        }
+    }
+}
+*/
+
+void writeThetaToFile(string filename, vector<double> theta) {
+    ofstream ofile;
+    if(!ofile.good()) {
+        ofile.open(filename.c_str(), ofstream::out);
+        if(!ofile.good()) {
+            cout << "Error opening file " << filename << ". Aborting!" << endl;
+            terminate();
+        }
+    }
+    for(size_t i=0; i < theta.size(); i++) {
+        ofile << i << " " << theta[i] << "\n";
+    }
+}
+
 void sunEarth() {
+    int T = 10; double dt = 0.001; string filename = "positions.xyz";
+
     solarSystem = new SolarSystem();
     solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
     solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, 2*M_PI, 0), 3e-6, 0.1, "earth",4);
 
     vector<CelestialBody> &bodies = solarSystem->bodies();
 
-    for(int i = 0; i<bodies.size(); i++) {
+    for(size_t i = 0; i<bodies.size(); i++) {
         CelestialBody &body = bodies[i]; // Reference to this body
         cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
 
     }
+    runVerlet(T,dt, filename);
 }
 
 void sunEarthJupiter() {
+    int T = 3; double dt = 0.001; string filename; string body1 = "sun"; string body2 = "earth";
+
+    double jupiterMass = 4.779e-4;
+
     solarSystem = new SolarSystem();
     solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.4, "sun", 1);
     solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, 2*M_PI, 0), 3e-6, 0.1, "earth",4);
-    solarSystem->createCelestialBody(vec3(5.2,0,0), vec3(0,2.59156,0),71492/149597871.0, 0.3, "jupiter",7);
+    solarSystem->createCelestialBody(vec3(5.2,0,0), vec3(0,2.59156,0),jupiterMass, 0.3, "jupiter",7);
 
-    vector<CelestialBody> &bodies = solarSystem->bodies();
+    int numberOfExperiments = 4;
 
-    for(int i = 0; i<bodies.size(); i++) {
-        CelestialBody &body = bodies[i]; // Reference to this body
-        cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
+    cout << "We are creating " << numberOfExperiments <<" files and running with dt = " << dt << "." <<endl;
+    for(int i = 0; i < numberOfExperiments; i++) {
+        filename = "sunEarthJupiterPlot"+to_string(i)+".xyz";
+        runVerlet(T, dt, filename, body1, body2);
 
+        solarSystem->file().close();
+        jupiterMass *=10;
+
+
+        solarSystem = new SolarSystem();
+        solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
+        solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, 2*M_PI, 0), 3e-6, 0.1, "earth",4);
+        solarSystem->createCelestialBody(vec3(5.2,0,0), vec3(0,2.59156,0),jupiterMass, 0.3, "jupiter",7);
     }
+
 }
 
 void sunMercuryWithGR() {
+    int T = 10; double dt = 0.001; string filename = "positions.xyz";
+
     solarSystem = new SolarSystem();
-    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.4, "sun", 1);
+    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.01, "sun", 1);
     solarSystem->createCelestialBody(vec3(0.3075,0,0), vec3(0,12.44,0),2440.0/149597871.0,0.05,"mercury",2);
     solarSystem->setGeneralRelativity();
 
     vector<CelestialBody> &bodies = solarSystem->bodies();
 
-    for(int i = 0; i<bodies.size(); i++) {
+    for(size_t i = 0; i<bodies.size(); i++) {
         CelestialBody &body = bodies[i]; // Reference to this body
         cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
+    }
 
+    runVerlet(T,dt, filename);
+
+    vector<double> thetaWithGR = solarSystem->getTheta();
+    writeThetaToFile("thetaWithGR.xyz", thetaWithGR);
+    for(size_t i=0; i < thetaWithGR.size(); i++) {
+        cout << i << " " << thetaWithGR[i] << endl;
     }
 }
 
 void sunMercuryWithoutGR() {
+    int T = 10; double dt = 0.001; string filename = "positions.xyz";
+
     solarSystem = new SolarSystem();
-    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.4, "sun", 1);
+    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.01, "sun", 1);
     solarSystem->createCelestialBody(vec3(0.3075,0,0), vec3(0,12.44,0),2440.0/149597871.0,0.05,"mercury",2);
 
     vector<CelestialBody> &bodies = solarSystem->bodies();
 
-    for(int i = 0; i<bodies.size(); i++) {
+    for(size_t i = 0; i<bodies.size(); i++) {
         CelestialBody &body = bodies[i]; // Reference to this body
         cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
 
     }
+    runVerlet(T,dt, filename);
+
+    vector<double> thetaWithoutGR = solarSystem->getTheta();
+    writeThetaToFile("thetaWithoutGR.xyz", thetaWithoutGR);
+    for(size_t i=0; i < thetaWithoutGR.size(); i++) {
+        cout << i << " " << thetaWithoutGR[i] << endl;
+    }
 }
 
 void officialPlanetsRealistic() {
+    int T = 10; double dt = 0.001; string filename = "positions.xyz";
+
     solarSystem = new SolarSystem();
     solarSystem->createCelestialBody( vec3(3.583187837707098e-03,3.347917208376574e-03,-1.601566243263295e-04), vec3((-1.916797473876860e-06)*365.242199,(6.860577040555349e-06)*365.242199,(3.852105421771686e-08)*365.242199), 1.0,(6.955e+5)/149597871.0, "sun", 1);
 
@@ -99,44 +185,50 @@ void officialPlanetsRealistic() {
 
     vector<CelestialBody> &bodies = solarSystem->bodies();
 
-    for(int i = 0; i<bodies.size(); i++) {
+    for(size_t i = 0; i<bodies.size(); i++) {
         CelestialBody &body = bodies[i]; // Reference to this body
         cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
 
     }
+    runVerlet(T,dt, filename);
 }
 
 void officialPlanetsStylized() {
+    int T = 5; double dt = 0.001; string filename = "positions.xyz";
+
     solarSystem = new SolarSystem();
-    solarSystem->createCelestialBody( vec3(3.583187837707098e-03,3.347917208376574e-03,-1.601566243263295e-04), vec3((-1.916797473876860e-06)*365.242199,(6.860577040555349e-06)*365.242199,(3.852105421771686e-08)*365.242199), 1.0,(6.955e+5)/149597871.0, "sun", 1);
+    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
+    //Realistic x position = 0.32464694416379486
+    solarSystem->createCelestialBody(vec3(0.32464694416379486,0,0), vec3(0,11.911610192193645,0),2440.0/149597871.0,(2.4e+24)/(2e+30),"mercury",2);
+    //Realistic x position = 0.723801872984173
+    solarSystem->createCelestialBody(vec3(0.723801872984173,0,0), vec3(0,7.348958357609,0),6051.893/149597871.0, (4.9e+24)/(2e+30), "venus",3);
 
-    solarSystem->createCelestialBody(vec3(-1.689638050644479e-01,2.746185253985868e-01,3.783565039667143e-02), vec3((-2.941090431599825e-02)*365.242199,(-1.400673667979914e-02)*365.242199,(1.552995718374029e-03)*365.242199),2440.0/149597871.0,(2.4e+24)/(2e+30),"mercury",2);
-
-    solarSystem->createCelestialBody(vec3(2.261833743605355e-02,-7.233613245242075e-01,-1.122302675795243e-02), vec3((2.008241010304477e-02)*365.242199,(4.625021426170730e-04)*365.242199,(-1.152705875157388e-03)*365.242199),6051.893/149597871.0, (4.9e+24)/(2e+30), "venus",3);
-
-    solarSystem->createCelestialBody( vec3(9.779167444303752e-01,2.272281606873612e-01, -1.762900112459768e-04), vec3((-4.140900006551348e-03)*365.242199, (1.671297229409165e-02)*365.242199, (-6.071663121998971e-07)*365.242199),6378.14/149597871.0, 3e-6, "earth",4);
-
-    solarSystem->createCelestialBody(vec3(1.083484179334264,-8.630838246913118e-01,-4.481984242527660e-02), vec3((9.286451652444910e-03)*365.242199,(1.212119447482730e-02)*365.242199,(2.594581334177116e-05)*365.242199),3394.0/149597871.0, (6.6e+23)/(2e+30), "mars",6);
-
-    solarSystem->createCelestialBody(vec3(-5.433021216987578,-3.890762583943597e-01,1.231202671627251e-01), vec3((4.512629769156300e-04)*365.242199,(-7.169976033688688e-03)*365.242199,(1.969934735867556e-05)*365.242199),71492/149597871.0, (1.9e+27)/(2e+30), "jupiter",7);
-
-    solarSystem->createCelestialBody(vec3(-2.313180120049030,-9.763200920369798,2.618183143745622e-01), vec3((5.123311296208641e-03)*365.242199,(-1.303286396807794e-03)*365.242199,(-1.814530920780186e-04)*365.242199),60268/149597871.0, 5.5e+26/(2e+30), "saturn",11);
-
-    solarSystem->createCelestialBody(vec3(1.847687170457543e+01,7.530306462979262,-2.114037101346196e-01), vec3((-1.513092405140061e-03)*365.242199,(3.458857885545459e-03)*365.242199,(3.234920926043226e-05)*365.242199),25559/149597871.0, (8.8e+25)/(2e+30), "uranus",13);
-
-    solarSystem->createCelestialBody(vec3(2.825174937236003e+01,-9.949114169366872,-4.462071175746522e-01), vec3((1.021996736183022e-03)*365.242199,(2.979258351346539e-03)*365.242199,(-8.531373744879276e-05)*365.242199),24766/149597871.0, (1.03e+26)/(2e+30), "neptune",18);
+    solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, 2*M_PI, 0), 3e-6, 0.1, "earth",4);
+    //Realistic x position = 1.385951107935072
+    solarSystem->createCelestialBody(vec3(1.385951107935072,0,0), vec3(0,5.5771205661159025,0),3394.0/149597871.0, (6.6e+23)/(2e+30), "mars",6);
+    //Realistic x position = 5.448326208962672, realistic velocity in y direction = 2.6239692699056545
+    solarSystem->createCelestialBody(vec3(1.6,0,0), vec3(0,2*M_PI/sqrt(5.45),0),71492/149597871.0*(1.6/5.45), (1.9e+27)/(2e+30), "jupiter",7);
+    //Realistic x position = 10.0369040699332
+    //solarSystem->createCelestialBody(vec3(1.9,0,0), vec3(0,1.9319827582810583,0),60268/149597871.0, 5.5e+26/(2e+30), "saturn",11);
+    //Realistic x position = 19.953570982217347
+    //solarSystem->createCelestialBody(vec3(2.2,0,0), vec3(0,1.3789618961566568,0),25559/149597871.0, (8.8e+25)/(2e+30), "uranus",13);
+    //Realistic x position = 29.95572259428099
+    //solarSystem->createCelestialBody(vec3(2.5,0,0), vec3(0,1.1508164486857466,0),24766/149597871.0, (1.03e+26)/(2e+30), "neptune",18);
 
     vector<CelestialBody> &bodies = solarSystem->bodies();
 
-    for(int i = 0; i<bodies.size(); i++) {
+    for(size_t i = 0; i<bodies.size(); i++) {
         CelestialBody &body = bodies[i]; // Reference to this body
         cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
-
     }
+
+    runVerlet(T,dt, filename);
 
 }
 
 void sunJupiterCrash(){
+    int T = 10; double dt = 0.001; string filename = "positions.xyz";
+
     solarSystem = new SolarSystem();
     //Checking if collision algorithm works
     solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0,0.2, "sun crash test", 1);
@@ -144,98 +236,111 @@ void sunJupiterCrash(){
 
     vector<CelestialBody> &bodies = solarSystem->bodies();
 
-    for(int i = 0; i<bodies.size(); i++) {
+    for(size_t i = 0; i<bodies.size(); i++) {
         CelestialBody &body = bodies[i]; // Reference to this body
         cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
 
     }
+    runVerlet(T,dt, filename);
 }
-/*
-void runEuler() {
-    int numTimesteps = 630000; //One year = 2*M_PI*(1/dt)  ===>  One Century = 630000 = numTimesteps
-    double dt = 0.001;
-    Euler integrator(dt);
-    for(int timestep=0; timestep<numTimesteps; timestep++) {
-        integrator.integrateOneStep(*solarSystem);
-        solarSystem->writeToFile("positions.xyz");
+
+void stabilityTest() {
+    solarSystem = new SolarSystem();
+    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
+    solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, 2*M_PI, 0), 3e-6, 0.1, "earth",4);
+
+
+    int T = 10; double dt = 1./T; string filename; int numberOfExperiments = 4;
+
+    for(int i = 0; i < numberOfExperiments; i++) {
+        filename = "stabilityPlot"+to_string(i)+".xyz";
+        runVerlet(T, dt, filename);
+        dt = dt/10;
+        solarSystem->file().close();
+
+        solarSystem = new SolarSystem();
+        solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
+        solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, 2*M_PI, 0), 3e-6, 0.1, "earth",4);
     }
 }
-*/
-void runVerlet() {
-    int numTimesteps = 630000; //One year = 2*M_PI*(1/dt)  ===>  One Century = 630000 = numTimesteps
-    double dt = 0.001; bool writeLogarithm = false; bool findD = true;
-    string body1 = "sun"; string body2 = "mercury";
+
+void escapeVelocity() {
+    double earthSpeedY = 2*M_PI;
+
+    solarSystem = new SolarSystem();
+    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
+    solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0,earthSpeedY, 0), 3e-6, 0.1, "earth",4);
+
+    double dt = 0.0001; int numberOfExperiments = 10000;
+    double tolerance = (1e-4)/numberOfExperiments;
+    double G = 4*M_PI*M_PI; double theoreticalEscapeVelocity = sqrt(2*G);
     Verlet integrator(dt);
-    for(int timestep=0; timestep<numTimesteps; timestep++) {
-        integrator.integrateOneStep(*solarSystem);
-        if(findD) {
-            solarSystem->findMaxMinDistance(body1, body1);
-            if(timestep == (int)numTimesteps*0.90) {
-                solarSystem->findCoordinates(body1, body2, 0.3075);
-            }
-        }
-        if(writeLogarithm) {
-           solarSystem->writeToFileLogarithm("positions.xyz");
-        } else {
-            solarSystem->writeToFile("positions.xyz");
-        }
-    }
-    double years = (numTimesteps*dt)/(2*M_PI);
+    cout << "After each experiment we will increment earths velocity in y-direction by " << earthSpeedY/numberOfExperiments << endl;
+    for(int i = 0; i < numberOfExperiments; i++) {
+        integrator.integrateOneStep(*solarSystem); //Calculating kinetic- and potentialenergy
 
-    cout << "The solar system is simulating "<< years << " years with " << solarSystem->bodies().size() << " objects." << endl;
+        if(abs(solarSystem->totalEnergy()) <= tolerance) {
+            cout << "We ran " << i << " experiments with an error tolerance of " << tolerance << "." << endl;
+            cout << "The numerical escape velocity is " << earthSpeedY << "." << endl;
+            cout << "The theoretical escape velocity is " << theoreticalEscapeVelocity << "." << endl;
+            cout << "-----------------------------------------------------------------" << endl;
+            cout << "Ending the experiment." << endl;
+            i = numberOfExperiments;
+        }
+        earthSpeedY += earthSpeedY/numberOfExperiments;
 
-    if(solarSystem->maxDistance() != 0.0) {
-        cout << "Maximum distance between " << body1 << " and " << body2 << " is " << solarSystem->maxDistance() << endl;
-        cout << "Minimum distance between " << body1 << " and " << body2 << " is " << solarSystem->minDistance() << endl;
+        solarSystem = new SolarSystem();
+        solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
+        solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, earthSpeedY, 0), 3e-6, 0.1, "earth",4);
     }
 }
 
 int main(){
+    //stabilityTest();
 
-    //Setting the output to be in logarithmic scale.
-    //solarSystem->setLogarithmScale();
+    //escapeVelocity(); //Denne er ferdig
 
-    //Setting center of mass.
+    //sunEarthJupiter(); //Denne er ferdig
+
+    //officialPlanetsStylized();  //Ikke ferdig. Den trenger fortsatt å fikse hastighetene og massene
 
 
-    vec3 CM; vec3 periCoordGR; vec3 periCoordNoGR;
-
+    //vec3 CM; vec3 periCoordGR; vec3 periCoordNoGR;
+    /*
     //officialPlanetsRealistic();
     //sunEarthJupiter();
-    sunMercuryWithGR();
+    //sunMercuryWithGR();
 
     //solarSystem->setCenterOfMass(); //setting origo to be center of mass
     //solarSystem->findCenterOfMass();
     //CM = solarSystem->getCenterOfMass();
 
     //cout << CM << endl;
-    runVerlet();
-    periCoordGR = solarSystem->getPerihelionCoordinates();
-    cout << "The coordinates are: " << periCoordGR << " and the theta is: " << tan(periCoordGR.y()/periCoordGR.x())*3600 << endl;
+
+    //periCoordGR = solarSystem->getPerihelionCoordinates();
+    //cout << "The coordinates are: " << periCoordGR << " and the theta is: " << (atan2(periCoordGR.y(),periCoordGR.x())+M_PI)*180/M_PI << endl;
     //solarSystem->findCenterOfMass();
     //CM = solarSystem->getCenterOfMass();
     //cout << CM << endl;
-
 
 
     //officialPlanetsRealistic();
     //sunEarthJupiter();
-    sunMercuryWithoutGR();
+    //cout << "WITHOUT GENERAL RELATIVITY TERM" << endl;
+    //sunMercuryWithoutGR();
 
     //solarSystem->setMomentum();
     //solarSystem->setCenterOfMass();
-    solarSystem->findCenterOfMass();
+    //solarSystem->findCenterOfMass();
     //CM = solarSystem->getCenterOfMass();
 
     //cout << CM << endl;
-    runVerlet();
-    periCoordNoGR = solarSystem->getPerihelionCoordinates();
-    cout << "The coordinates are: " << periCoordNoGR << " and the theta is: " << tan(periCoordNoGR.y()/periCoordNoGR.x())*3600 << endl;
+    //periCoordNoGR = solarSystem->getPerihelionCoordinates();
+    //cout << "The coordinates are: " << periCoordNoGR << " and the theta is: " << (atan2(periCoordNoGR.y(),periCoordNoGR.x())+M_PI)*180/M_PI << endl;
     //solarSystem->findCenterOfMass();
     //CM = solarSystem->getCenterOfMass();
     //cout << CM << endl;
-
+    */
 
     return 0;
 }
-
