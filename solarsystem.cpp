@@ -63,6 +63,7 @@ void SolarSystem::calculateForcesAndEnergy() {
         }
 
         m_kineticEnergy += 0.5*body1.mass*body1.velocity.lengthSquared();
+        m_angularMomentum += body1.position.cross(body1.mass*body1.velocity);
     }
 }
 
