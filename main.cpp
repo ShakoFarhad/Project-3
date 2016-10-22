@@ -148,7 +148,7 @@ void sunEarthJupiterCenterOfMass() {
 }
 
 void sunMercuryWithGR() {
-    int T = 10; double dt = 0.001; string filename = "positions.xyz";
+    int T = 10; double dt = 0.001; string filename = "sunMercuryWithGR.xyz";
 
     solarSystem = new SolarSystem();
     solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.01, "sun", 1);
@@ -163,16 +163,10 @@ void sunMercuryWithGR() {
     }
 
     runVerlet(T,dt, filename);
-
-    vector<double> thetaWithGR = solarSystem->getTheta();
-    writeThetaToFile("thetaWithGR.xyz", thetaWithGR);
-    for(size_t i=0; i < thetaWithGR.size(); i++) {
-        cout << i << " " << thetaWithGR[i] << endl;
-    }
 }
 
 void sunMercuryWithoutGR() {
-    int T = 10; double dt = 0.001; string filename = "positions.xyz";
+    int T = 10; double dt = 0.001; string filename = "sunMercuryWithoutGR.xyz";
 
     solarSystem = new SolarSystem();
     solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.01, "sun", 1);
@@ -183,15 +177,9 @@ void sunMercuryWithoutGR() {
     for(size_t i = 0; i<bodies.size(); i++) {
         CelestialBody &body = bodies[i]; // Reference to this body
         cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
-
     }
+
     runVerlet(T,dt, filename);
-
-    vector<double> thetaWithoutGR = solarSystem->getTheta();
-    writeThetaToFile("thetaWithoutGR.xyz", thetaWithoutGR);
-    for(size_t i=0; i < thetaWithoutGR.size(); i++) {
-        cout << i << " " << thetaWithoutGR[i] << endl;
-    }
 }
 
 void officialPlanetsRealistic() {
@@ -246,7 +234,7 @@ void sunJupiterCrash(){
     solarSystem->createCelestialBody(vec3(0.723801872984173,0,0), vec3(0,7.348958357609,0),6051.893/149597871.0, 0.07, "venus",3);
     solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, 2*M_PI, 0), 3e-6, 0.1, "earth",4);
     solarSystem->createCelestialBody(vec3(1.385951107935072,0,0), vec3(0,5.5771205661159025,0),3394.0/149597871.0, 0.09, "mars",6);
-    solarSystem->createCelestialBody(vec3(3,0,0), vec3(0,2.6239692699056545,0),71492/149597871.0, 0.13, "jupiter",7);
+    solarSystem->createCelestialBody(vec3(2,0,0), vec3(0,2.6239692699056545,0),71492/149597871.0, 0.13, "jupiter",7);
 
     vector<CelestialBody> &bodies = solarSystem->bodies();
 
@@ -404,6 +392,10 @@ int main(){
     //sunMercuryWithoutGR(); //Denne er ikke ferdig. Svarer på deler av 3g.
 
     //sunJupiterCrash(); //Denne er ferdig. Collision detection test: Setter Jupiter nærmere sola.
+
+    //sunMercuryWithGR();
+
+    //sunMercuryWithoutGR();
 
     return 0;
 }
