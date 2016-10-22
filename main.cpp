@@ -152,38 +152,83 @@ void sunEarthJupiterCenterOfMass() {
 }
 
 void sunMercuryWithGR() {
-    int T = 10; double dt = 0.001; string filename = "sunMercuryWithGR.xyz";
+    int T = 100; double dt = 0.001; string filename = "sunMercuryWithGR.xyz";
 
     solarSystem = new SolarSystem();
     solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.01, "sun", 1);
     solarSystem->createCelestialBody(vec3(0.3075,0,0), vec3(0,12.44,0),2440.0/149597871.0,0.05,"mercury",2);
+
     solarSystem->setGeneralRelativity();
 
-    vector<CelestialBody> &bodies = solarSystem->bodies();
-
-    for(size_t i = 0; i<bodies.size(); i++) {
-        CelestialBody &body = bodies[i]; // Reference to this body
-        cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
+    long numTimesteps = T/dt;
+    Verlet integrator(dt);
+    for(int timestep=0; timestep<numTimesteps; timestep++) {
+        integrator.integrateOneStep(*solarSystem);
+        solarSystem->findPerihelion(solarSystem->bodies()[0], solarSystem->bodies()[1]);
     }
 
-    runVerlet(T,dt, filename);
+    cout << "Simulating sun and Mercury for " << T << " years with general relativity factor." << endl;
+
+    /*
+    vector<vec3> periCoord = solarSystem->getPeriCoord();
+    cout << "The perihelion coordinates are " << endl;
+    vec3 peri;
+    for (vector<vec3>::iterator it = periCoord.begin() ; it != periCoord.end(); ++it) {
+        peri= *it;
+        cout << peri << ' ';
+    }
+    cout << '\n'; cout << '\n';
+    */
+
+    vector<double> theta = solarSystem->getTheta();
+    cout << "The theta values are "<< endl;
+    double thetaValue;
+    for (vector<double>::iterator it = theta.begin() ; it != theta.end(); ++it) {
+        thetaValue = *it;
+        cout << ' ' << thetaValue;
+
+    }
+    cout << '\n';
+
 }
 
 void sunMercuryWithoutGR() {
-    int T = 10; double dt = 0.001; string filename = "sunMercuryWithoutGR.xyz";
+    int T = 100; double dt = 0.001; string filename = "sunMercuryWithoutGR.xyz";
 
     solarSystem = new SolarSystem();
-    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.01, "sun", 1);
-    solarSystem->createCelestialBody(vec3(0.3075,0,0), vec3(0,12.44,0),2440.0/149597871.0,0.05,"mercury",2);
+    CelestialBody sun = solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,-12.44*2440.0/149597871.0,0), 1.0, 0.01, "sun", 1);
+    CelestialBody mercury = solarSystem->createCelestialBody(vec3(0.3075,0,0), vec3(0,12.44,0),2440.0/149597871.0,0.05,"mercury",2);
 
-    vector<CelestialBody> &bodies = solarSystem->bodies();
-
-    for(size_t i = 0; i<bodies.size(); i++) {
-        CelestialBody &body = bodies[i]; // Reference to this body
-        cout << "The position of the object is " << body.position << " with velocity " << body.velocity << endl;
+    long numTimesteps = T/dt;
+    Verlet integrator(dt);
+    for(int timestep=0; timestep<numTimesteps; timestep++) {
+        integrator.integrateOneStep(*solarSystem);
+        solarSystem->findPerihelion(solarSystem->bodies()[0], solarSystem->bodies()[1]);
     }
 
-    runVerlet(T,dt, filename);
+    cout << "Simulating sun and Mercury for " << T << " years without general relativity factor." << endl;
+
+    /*
+    vector<vec3> periCoord = solarSystem->getPeriCoord();
+    cout << "The perihelion coordinates are " << endl;
+    vec3 peri;
+    for (vector<vec3>::iterator it = periCoord.begin() ; it != periCoord.end(); ++it) {
+        peri= *it;
+        cout << peri << ' ';
+    }
+    cout << '\n'; cout << '\n';
+    */
+
+    vector<double> theta = solarSystem->getTheta();
+    cout << "The theta values are "<< endl;
+    double thetaValue;
+    for (vector<double>::iterator it = theta.begin() ; it != theta.end(); ++it) {
+        thetaValue = *it;
+        cout << ' ' << thetaValue;
+
+    }
+    cout << '\n';
+
 }
 
 void officialPlanetsRealistic() {
@@ -375,7 +420,7 @@ void escapeVelocity() {
 }
 
 int main(){
-    sunEarth(); //Denne er ferdig. Svarer på deler av 3b.
+    //sunEarth(); //Denne er ferdig. Svarer på deler av 3b.
 
     //conservationOfEnergy(); //Denne er ferdig. Svarer på deler av 3c.
 
@@ -397,9 +442,11 @@ int main(){
 
     //sunJupiterCrash(); //Denne er ferdig. Collision detection test: Setter Jupiter nærmere sola.
 
-    //sunMercuryWithGR();
+    //sunMercuryWithGR(); //Denne henter ut koordinatene (det er kommentert ut akkurat nå)
+                          //og thetaene for alle perihelions. Vet ikke hvordan man gjør om til arcseconds, eller forstå resultatet.
 
-    //sunMercuryWithoutGR();
+    //sunMercuryWithoutGR(); //Denne henter ut koordinatene (det er kommentert ut akkurat nå)
+                             //og thetaene for alle perihelions. Vet ikke hvordan man gjør om til arcseconds, eller forstå resultatet.
 
     return 0;
 }

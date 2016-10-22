@@ -25,11 +25,10 @@ void SolarSystem::calculateForcesAndEnergy() {
     /*This function calucaltes the forces and energy between every pair of celestial bodies
      *and updates the forces and that are acting up each celestial body.
     */
-    m_timesteps++;
+
     m_kineticEnergy = 0;
     m_potentialEnergy = 0;
     m_angularMomentum.zeros();
-
 
     for(CelestialBody &body : m_bodies) {
         // Reset forces on all bodies
@@ -64,7 +63,10 @@ void SolarSystem::calculateForcesAndEnergy() {
 
         m_kineticEnergy += 0.5*body1.mass*body1.velocity.lengthSquared();
         m_angularMomentum += body1.position.cross(body1.mass*body1.velocity);
+
+
     }
+    m_timesteps++;
 }
 
 int SolarSystem::numberOfBodies() const {
@@ -200,15 +202,17 @@ void SolarSystem::findCoordinates(CelestialBody body1, CelestialBody body2, doub
      *m_periihelionCoordinates to (1,0,0).
     */
 
-    double tolerance = 1e-7;
+    double tolerance = 1e-6;
     vec3 deltaRVector = body1.position - body2.position;
     if(abs(deltaRVector.length() - minDist) <= tolerance) {
         if(body1.position.length() < body2.position.length()) {
             setPerihelionCoordinates(body2.position);
-            setTheta((atan2(m_perihelionCoordinates.y(),m_perihelionCoordinates.y())+M_PI)*180/M_PI);
+            cout << body2.position << endl;
+            setTheta(atan2(m_perihelionCoordinates.y(),m_perihelionCoordinates.x()));
         } else {
             setPerihelionCoordinates(body1.position);
-            setTheta((atan2(m_perihelionCoordinates.y(),m_perihelionCoordinates.y())+M_PI)*180/M_PI);
+            cout << body1.position << endl;
+            setTheta(atan2(m_perihelionCoordinates.y(),m_perihelionCoordinates.x()));
         }
     }
 }
@@ -228,32 +232,31 @@ void SolarSystem::setPerihelionCoordinates(vec3 perihelionCoordinates) {
 vec3 SolarSystem::getPerihelionCoordinates() const{
     return m_perihelionCoordinates;
 }
-/*
-void SolarSystem::findPerihelion(string body1Name, string body2Name) const{
-    for(int i=0; i<numberOfBodies(); i++) {
-        CelestialBody &body1 = m_bodies[i];
-        for(int j=i+1; j<numberOfBodies(); j++) {
-            CelestialBody &body2 = m_bodies[j];
-            if(body1.name.compare(body1Name) == 0 && body2.name.compare(body2Name) == 0) {
-                if(m_timesteps == 0) {
-                    m_prevPrevCoord = body2.position;
-                }
-                if(m_timesteps == 1) {
-                    m_prevCoord = body2.position;
-                }
-                if(m_timesteps > 1) {
-                    m_currentCoord = body2.position;
-                    if(m_prevPrevCoord.length() > m_prevCoord.length() && m_currentCoord.length() > m_prevCoord) {
-                        m_periCoord.push_back(m_prevCoord);
-                    }
-                    m_prevPrevCoord = m_prevCoord;
-                    m_prevCoord = m_currentCoord;
-                }
-            }
+
+void SolarSystem::findPerihelion(CelestialBody body1, CelestialBody body2) {
+    if(m_timesteps == 2) {
+        m_prevPrevCoord = body2.position-body1.position;
+    }
+    if(m_timesteps == 3) {
+        m_prevCoord = body2.position-body1.position;
+    }
+    if(m_timesteps > 3) {
+        m_currentCoord = body2.position-body1.position;
+
+        if((m_prevPrevCoord.length() > m_prevCoord.length()) && (m_currentCoord.length() > m_prevCoord.length())) {
+            m_periCoord.push_back(m_prevCoord);
+            setTheta(atan2(m_periCoord.back().y(),m_periCoord.back().x()));
         }
+        m_prevPrevCoord = m_prevCoord;
+        m_prevCoord = m_currentCoord;
+
     }
 }
-*/
+
+vector<vec3> SolarSystem::getPeriCoord() {
+    return m_periCoord;
+}
+
 void SolarSystem::setGeneralRelativity() {
     m_generalRelativity = true;
 }

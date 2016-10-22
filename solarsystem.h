@@ -35,6 +35,8 @@ public:
     vec3 getPerihelionCoordinates() const;
     void findCoordinates(CelestialBody body1Name, CelestialBody body2Name, double minDistance);
     void setTheta(double theta);
+    void findPerihelion(CelestialBody body1, CelestialBody body2);
+    vector<vec3> getPeriCoord();
     vector<double> getTheta() const;
     void findPerihelion(string body1Name, string body2Name) const;
     std::vector<CelestialBody> &bodies();
