@@ -55,7 +55,7 @@ void writeThetaToFile(string filename, vector<double> theta) {
 }
 
 void sunEarth() {
-    int T = 10; double dt = 0.001; string filename;
+    int T = 5; double dt = 0.001; string filename;
 
     solarSystem = new SolarSystem();
     solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
@@ -66,6 +66,10 @@ void sunEarth() {
     filename = "sunEarthVerlet.xyz";
     cout << "Running sun and earth system with Verlet to file, '"<<filename<<"'"<<".\n" << endl;
     runVerlet(T,dt, filename);
+
+    solarSystem = new SolarSystem();
+    solarSystem->createCelestialBody( vec3(0,0,0), vec3(0,0,0), 1.0, 0.2, "sun", 1);
+    solarSystem->createCelestialBody( vec3(1, 0, 0), vec3(0, 2*M_PI, 0), 3e-6, 0.1, "earth",4);
 
     filename = "sunEarthEuler.xyz";
     cout << "Running sun and earth system with Euler to file, '"<<filename<<"'"<<"." << endl;
@@ -371,7 +375,7 @@ void escapeVelocity() {
 }
 
 int main(){
-    //sunEarth(); //Denne er ferdig. Svarer på deler av 3b.
+    sunEarth(); //Denne er ferdig. Svarer på deler av 3b.
 
     //conservationOfEnergy(); //Denne er ferdig. Svarer på deler av 3c.
 
